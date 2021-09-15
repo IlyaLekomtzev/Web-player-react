@@ -6,21 +6,27 @@ const App = () => {
   // State
   const [songList, setSongList] = useState(songs);
   const [activeSongIndex, setActiveSongIndex] = useState(0);
+  const [progress, setProgress] = useState(0);
   const [play, setPlay] = useState(false);
   const [ready, setReady] = useState(false);
 
   // Song props
-  const { name, artist, image, audioSrc } = songList[activeSongIndex];
+  const { name, artist, color, image, audioSrc } = songList[activeSongIndex];
 
   // Refs
   const audioRef = useRef(new Audio(audioSrc));
+  const intervalRef = useRef();
   const isReady = useRef(false);
+
+  const { duration } = audioRef.current;
 
   // Effects
   useEffect(() => {
     if (play) {
       audioRef.current.play();
+      startTimer();
     } else {
+      clearInterval(intervalRef.current);
       audioRef.current.pause();
     }
   }, [play]);
@@ -28,12 +34,14 @@ const App = () => {
   useEffect(() => {
     return () => {
       audioRef.current.pause();
+      clearInterval(intervalRef.current);
     }
   }, []);
 
   useEffect(() => {
     audioRef.current.pause();
     audioRef.current = new Audio(audioSrc);
+    setProgress(audioRef.current.currentTime);
     
     if (isReady.current) {
       setReady(false);
@@ -41,6 +49,7 @@ const App = () => {
         setReady(true);
         audioRef.current.play();
         setPlay(true);
+        startTimer();
       });
     } else {
       isReady.current = true;
@@ -49,6 +58,18 @@ const App = () => {
   }, [activeSongIndex]);
 
   //Handlers
+  const startTimer = () => {
+	  clearInterval(intervalRef.current);
+
+	  intervalRef.current = setInterval(() => {
+	    if (audioRef.current.ended) {
+	      switchHandler('next');
+	    } else {
+	      setProgress(audioRef.current.currentTime);
+	    }
+	  }, [1000]);
+	}
+
   const switchHandler = (action = 'next') => {
     let length = songList.length;
     switch (action){
@@ -75,16 +96,33 @@ const App = () => {
     setPlay(!play);
   };
 
+  const onScrub = (value) => {
+    clearInterval(intervalRef.current);
+    audioRef.current.currentTime = value;
+    setProgress(audioRef.current.currentTime);
+  }
+  
+  const onScrubEnd = () => {
+    if (!play) {
+      setPlay(true);
+    }
+    startTimer();
+  }
+
   // Vars for view
   const iconStyles = 'mx-auto w-5 h-5';
+  const currentPercentage = duration ? `${(progress / duration) * 100}%` : '0%';
+  const trackStyling = `
+    -webkit-gradient(linear, 0% 0%, 100% 0%, color-stop(${currentPercentage}, #666), color-stop(${currentPercentage}, #ECECEC))
+  `;
 
   return (
-    <div className="w-screen h-screen flex items-center justify-center bg-red-100">
+    <div className={`w-screen h-screen flex items-center justify-center bg-${color}-500`}>
       <div className="md:container md:mx-auto px-4">
         <div className="w-full flex justify-between bg-white rounded-3xl overflow-hidden shadow-xl relative">
           <span className={`absolute top-4 right-4 flex h-3 w-3 transition duration-100 linear ${!ready ? 'opacity-100' : 'opacity-0'}`}>
-            <span className="relative inline-flex rounded-full h-full w-full bg-red-500">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span className={`relative inline-flex rounded-full h-full w-full bg-${color}-500`}>
+              <span className={`animate-ping absolute inline-flex h-full w-full rounded-full bg-${color}-400 opacity-75`}></span>
             </span>
           </span>
           
@@ -100,12 +138,26 @@ const App = () => {
               <button type="button" className="w-12 h-12 rounded-full bg-gray-300 transition duration-200 linear hover:bg-gray-500 mx-2" onClick={() => switchHandler('prev')}>
                 <FiRewind stroke="white" className={iconStyles} />
               </button>
-              <button type="button" className="w-12 h-12 rounded-full bg-red-500 transition duration-200 linear hover:bg-red-400 mx-2" onClick={togglePlay}>
+              <button type="button" className={`w-12 h-12 rounded-full bg-${color}-500 transition duration-200 linear hover:bg-${color}-400 mx-2`} onClick={togglePlay}>
                 {play ? <FiPause stroke="white" className={iconStyles} /> : <FiPlay stroke="white" className="mx-auto w-5 h-5" />}
               </button>
               <button type="button" className="w-12 h-12 rounded-full bg-gray-300 transition duration-200 linear hover:bg-gray-500 mx-2" onClick={() => switchHandler('next')}>
                 <FiFastForward stroke="white" className={iconStyles} />
               </button>
+            </div>
+            <div className="w-full pt-8 flex justify-center">
+              <input
+                type="range"
+                value={progress}
+                step="1"
+                min="0"
+                max={duration ? duration : `${duration}`}
+                className="w-full max-w-xs"
+                onChange={(e) => onScrub(e.target.value)}
+                //onMouseUp={onScrubEnd}
+                //onKeyUp={onScrubEnd}
+                style={{ background: trackStyling }}
+              />
             </div>
           </div>
         </div>
