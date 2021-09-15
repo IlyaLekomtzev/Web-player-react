@@ -96,17 +96,10 @@ const App = () => {
     setPlay(!play);
   };
 
-  const onScrub = (value) => {
+  const onScrub = value => {
     clearInterval(intervalRef.current);
     audioRef.current.currentTime = value;
     setProgress(audioRef.current.currentTime);
-  }
-  
-  const onScrubEnd = () => {
-    if (!play) {
-      setPlay(true);
-    }
-    startTimer();
   }
 
   // Vars for view
@@ -154,8 +147,6 @@ const App = () => {
                 max={duration ? duration : `${duration}`}
                 className="w-full max-w-xs"
                 onChange={(e) => onScrub(e.target.value)}
-                //onMouseUp={onScrubEnd}
-                //onKeyUp={onScrubEnd}
                 style={{ background: trackStyling }}
               />
             </div>
